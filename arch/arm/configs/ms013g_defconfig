@@ -1,0 +1,5 @@
+#variant defconfig
+CONFIG_MACH_MS01_EUR_3G=y
+
+# Qcom WLAN
+CONFIG_WLAN=y
