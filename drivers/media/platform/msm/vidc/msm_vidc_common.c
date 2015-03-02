@@ -522,7 +522,6 @@ static void handle_event_change(enum command_response cmd, void *data)
 					__func__, inst,
 					event_notify->packet_buffer,
 					event_notify->exra_data_buffer);
-					
 				if (inst->state == MSM_VIDC_CORE_INVALID ||
 					inst->core->state ==
 						VIDC_CORE_INVALID) {
@@ -1649,6 +1648,7 @@ static enum hal_domain get_hal_domain(int session_type)
 	return domain;
 }
 
+//static enum hal_video_codec get_hal_codec_type(int fourcc)
 enum hal_video_codec get_hal_codec_type(int fourcc)
 {
 	enum hal_video_codec codec;
@@ -1808,13 +1808,13 @@ static int msm_vidc_load_resources(int flipped_state,
 		goto exit;
 	}
 	if (inst->core->resources.has_ocmem) {
-		mutex_lock(&inst->core->sync_lock);
 		height = max(inst->prop.height[CAPTURE_PORT],
 			inst->prop.height[OUTPUT_PORT]);
 		width = max(inst->prop.width[CAPTURE_PORT],
 			inst->prop.width[OUTPUT_PORT]);
 		ocmem_sz = get_ocmem_requirement(
 			height, width);
+		mutex_lock(&inst->core->sync_lock);
 		rc = msm_comm_scale_bus(inst->core, inst->session_type,
 					OCMEM_MEM);
 		mutex_unlock(&inst->core->sync_lock);
@@ -2524,7 +2524,7 @@ int msm_comm_qbuf(struct vb2_buffer *vb)
 				frame_data.device_addr, frame_data.alloc_len,
 				frame_data.buffer_type, frame_data.timestamp,
 				frame_data.flags);
-			if (atomic_read(&inst->get_seq_hdr_cnt) &&
+			if (!inst->ftb_count &&
 			   inst->session_type == MSM_VIDC_ENCODER) {
 				seq_hdr.seq_hdr = (u8 *) vb->v4l2_planes[0].
 					m.userptr;
@@ -2536,7 +2536,6 @@ int msm_comm_qbuf(struct vb2_buffer *vb)
 					dprintk(VIDC_DBG, "Seq_hdr: %p\n",
 						inst->vb2_seq_hdr);
 				}
-				atomic_dec(&inst->get_seq_hdr_cnt);
 			} else {
 				rc = call_hfi_op(hdev, session_ftb,
 					(void *) inst->session, &frame_data);
@@ -2824,7 +2823,7 @@ int msm_comm_try_set_prop(struct msm_vidc_inst *inst,
 
 	mutex_lock(&inst->sync_lock);
 	if (inst->state < MSM_VIDC_OPEN_DONE || inst->state >= MSM_VIDC_CLOSE) {
-		dprintk(VIDC_ERR, "Not in proper state to set property\n");
+		dprintk(VIDC_ERR, "skip set property\n");
 		rc = -EAGAIN;
 		goto exit;
 	}
@@ -3261,6 +3260,7 @@ static int msm_vidc_load_supported(struct msm_vidc_inst *inst)
 	}
 	return 0;
 }
+
 
 int msm_comm_check_scaling_supported(struct msm_vidc_inst *inst)
 {

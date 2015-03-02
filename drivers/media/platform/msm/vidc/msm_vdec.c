@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -687,8 +687,6 @@ int msm_vdec_reqbufs(struct msm_vidc_inst *inst, struct v4l2_requestbuffers *b)
 	mutex_lock(&q->lock);
 	rc = vb2_reqbufs(&q->vb2_bufq, b);
 	mutex_unlock(&q->lock);
-	if (rc)
-		dprintk(VIDC_ERR, "Failed to get reqbufs, %d\n", rc);
 	return rc;
 }
 
@@ -702,6 +700,7 @@ int msm_vdec_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	int rc = 0;
 	int i;
 	struct hal_buffer_requirements *buff_req_buffer;
+
 	if (!inst || !f || !inst->core || !inst->core->device) {
 		dprintk(VIDC_ERR,
 			"Invalid input, inst = %p, format = %p\n", inst, f);
@@ -1201,6 +1200,12 @@ static int msm_vdec_queue_output_buffers(struct msm_vidc_inst *inst)
 	struct vidc_frame_data frame_data = {0};
 	struct hal_buffer_requirements *output_buf, *extradata_buf;
 	int rc = 0;
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
+		return -EINVAL;
+	}
+
 	hdev = inst->core->device;
 
 	output_buf = get_buff_req_buffer(inst, HAL_BUFFER_OUTPUT);
@@ -1754,18 +1759,18 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 				dprintk(VIDC_ERR,
 					"Failed :Disabling OUTPUT port : %d\n",
 					rc);
-			break;			
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_CONCEAL_COLOR:
+			property_id = HAL_PARAM_VDEC_CONCEAL_COLOR;
+			property_val = ctrl->val;
+			pdata = &property_val;
+			break;				
 		default:
 			dprintk(VIDC_ERR,
 				"Failed : Unsupported multi stream setting\n");
 			rc = -ENOTSUPP;
 			break;
 		}
-		break;
-	case V4L2_CID_MPEG_VIDC_VIDEO_CONCEAL_COLOR:
-		property_id = HAL_PARAM_VDEC_CONCEAL_COLOR;
-		property_val = ctrl->val;
-		pdata = &property_val;
 		break;
 	default:
 		break;
